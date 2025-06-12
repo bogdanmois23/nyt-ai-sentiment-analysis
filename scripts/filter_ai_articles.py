@@ -14,7 +14,7 @@ parser.add_argument('--batch_size', type=int, default=16, help='Batch size for p
 parser.add_argument('--input_file', type=str, default='data/nyt-metadata.csv', help='Input CSV file path')
 parser.add_argument('--output_file', type=str, default='data/nyt-ai-sentiment.csv', help='Output CSV file path')
 parser.add_argument('--debug', action='store_true', help='Print additional debug information')
-args = parser.parse_known_args()
+args = parser.parse_args()
 
 # Define AI-related keywords with high precision
 AI_TERMS = {
@@ -130,44 +130,6 @@ def main():
     print("Filtering for AI-related articles...")
     df['is_ai_related'] = df['text'].apply(lambda x: is_ai_related_article(x, args.debug))
     df_filtered = df[df['is_ai_related']].copy()
-    df_all = df.copy()
-    df_all['year'] = pd.to_datetime(df_all['pub_date']).dt.year
-
-    OTHER_TOPICS = {
-        "Politics":   ["election", "government", "senate", "congress", "policy", "president", "campaign"],
-        "Sports":     ["game", "team", "player", "season", "nba", "football", "world cup", "olympics"],
-        "Health":     ["health", "medicine", "covid", "vaccine", "disease", "hospital", "mental health"],
-        "Business":   ["stock", "market", "economy", "business", "finance", "company"],
-        "TechNoAI":   ["technology", "computer", "software", "internet", "gadget", "innovation", "robotic"]
-    }
-    for k, v in OTHER_TOPICS.items():
-        OTHER_TOPICS[k] = [term.lower() for term in v]
-
-    for topic_name, keyword_list in OTHER_TOPICS.items():
-        pattern = r'\b(?:' + '|'.join(re.escape(kw) for kw in keyword_list) + r')\b'
-        df_all[f'is_{topic_name}'] = df_all['text'].str.contains(pattern, case=False, na=False)
-
-    topic_counts = (
-        df_all
-        .loc[:, ['year'] + [f'is_{t}' for t in OTHER_TOPICS.keys()]]
-        .groupby('year')
-        .sum()
-        .rename(columns={f'is_{t}': t for t in OTHER_TOPICS.keys()})
-        .sort_index()
-    )
-
-    baseline_mean_by_year   = topic_counts.mean(axis=1)
-    baseline_median_by_year = topic_counts.median(axis=1)
-    baseline_df = pd.DataFrame({
-        "baseline_mean":   baseline_mean_by_year,
-        "baseline_median": baseline_median_by_year
-    })
-    baseline_df.index.name = "year"
-
-    df_filtered['year'] = pd.to_datetime(df_filtered['pub_date']).dt.year
-    ai_counts_by_year = df_filtered.groupby('year').size().reindex(baseline_df.index, fill_value=0)
-    ai_counts_df = ai_counts_by_year.to_frame(name="AI_Count")
-
     
     print(f"Found {len(df_filtered)} AI-related articles out of {len(df)} total articles")
     

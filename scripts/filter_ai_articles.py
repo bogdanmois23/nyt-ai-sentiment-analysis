@@ -107,7 +107,8 @@ class TextDataset(Dataset):
 def main():
     print(f"Loading data from {args.input_file}...")
     # Load the dataset
-    df = pd.read_csv(args.input_file)
+    df = pd.read_csv(args.input_file, low_memory=False)
+    print(f"Loaded {len(df)} articles from the dataset")
     
     # Create a more comprehensive text field
     print("Creating comprehensive text field...")
@@ -127,7 +128,10 @@ def main():
     df['text'] = df['text'].str.strip()
     
     # Filter for AI-related articles using improved detection
-    print("Filtering for AI-related articles...")
+    print("Filtering articles by date range (2000–2024)...")
+    df['pub_date'] = pd.to_datetime(df['pub_date'], errors='coerce')
+    df = df.dropna(subset=['pub_date'])
+    df = df[(df['pub_date'] >= '2000-01-01') & (df['pub_date'] <= '2024-12-31')]
     df['is_ai_related'] = df['text'].apply(lambda x: is_ai_related_article(x, args.debug))
     df_filtered = df[df['is_ai_related']].copy()
     
